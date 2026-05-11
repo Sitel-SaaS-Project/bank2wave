@@ -1,0 +1,4 @@
+ofxparse==0.21
+python-dateutil==2.9.0.post0
+plaid-python>=17.0.0
+keyring>=25.0.0

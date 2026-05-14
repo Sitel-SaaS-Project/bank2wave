@@ -1,0 +1,24 @@
+---
+alwaysApply: true
+---
+
+## Context Management
+- Only read files explicitly mentioned or directly relevant to the task
+- Never read the entire codebase unless asked
+- Focus on one file at a time when possible
+- Stop and ask before exploring more than 3 files
+
+## Response Style
+- Be concise, no explanations unless asked
+- No summaries at the end of tasks
+- Skip "I will now..." preambles, just do the task
+- No suggestions for future improvements unless asked
+
+## Code Changes
+- Show only the changed code, not the entire file
+- Make targeted edits, not full rewrites
+- Ask for clarification before large refactors
+
+## Task Execution
+- Break large tasks into steps and confirm before proceeding
+- If unsure about scope, ask one focused question first

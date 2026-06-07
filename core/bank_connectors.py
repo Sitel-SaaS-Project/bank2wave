@@ -485,7 +485,7 @@ def plaid_fetch_transactions_full_sync(
 
     client = _plaid_client()
     by_id: dict[str, dict[str, Any]] = {}
-    cursor: Optional[str] = None
+    cursor: str = ""
 
     while True:
         req = TransactionsSyncRequest(access_token=access_token, cursor=cursor)
@@ -511,7 +511,7 @@ def plaid_fetch_transactions_full_sync(
 
         if not body.get("has_more"):
             break
-        cursor = body.get("next_cursor")
+        cursor = body.get("next_cursor") or ""
         if not cursor:
             break
 

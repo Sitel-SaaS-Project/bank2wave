@@ -4,3 +4,4 @@ __pycache__/
 *.pyo
 web/frontend/node_modules/
 web/backend/.venv/
+.env

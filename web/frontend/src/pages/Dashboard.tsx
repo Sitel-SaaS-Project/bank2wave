@@ -1,6 +1,12 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import api from '../api/client.ts';
 import { useNavigate } from 'react-router-dom';
+
+declare global {
+  interface Window {
+    Plaid: any;
+  }
+}
 
 interface SyncLog {
   id: number;
@@ -28,6 +34,7 @@ const Dashboard: React.FC = () => {
   const [logs, setLogs] = useState<SyncLog[]>([]);
   const [plan, setPlan] = useState<any>(null);
   const [loading, setLoading] = useState(true);
+  const [linking, setLinking] = useState(false);
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -51,6 +58,34 @@ const Dashboard: React.FC = () => {
     };
     fetchData();
   }, [navigate]);
+
+  const handleConnectBank = useCallback(async () => {
+    setLinking(true);
+    try {
+      const res = await api.get('/sync/plaid-link-token/bmo');
+      const linkToken = res.data.link_token;
+      const handler = window.Plaid.create({
+        token: linkToken,
+        onSuccess: async (public_token: string, metadata: any) => {
+          const account_id = metadata.accounts[0]?.id || '';
+          await api.post('/sync/link-account', {
+            connector_id: metadata.institution?.name || 'bank',
+            plaid_public_token: public_token,
+            plaid_account_id: account_id,
+            account_label: metadata.institution?.name || 'My Bank',
+            wave_account_name: 'Bank',
+          });
+          const accountsRes = await api.get('/sync/accounts');
+          setAccounts(accountsRes.data);
+        },
+        onExit: () => setLinking(false),
+      });
+      handler.open();
+    } catch (err: any) {
+      alert(err.response?.data?.detail || 'Failed to connect bank');
+      setLinking(false);
+    }
+  }, []);
 
   const handleLogout = () => {
     localStorage.removeItem('token');
@@ -82,7 +117,6 @@ const Dashboard: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-gray-950 text-white">
-      {/* Navbar */}
       <nav className="bg-gray-900 border-b border-gray-800 px-6 py-4 flex justify-between items-center">
         <h1 className="text-xl font-bold text-blue-400">bank2wave</h1>
         <div className="flex items-center gap-4">
@@ -94,28 +128,30 @@ const Dashboard: React.FC = () => {
 
       <div className="max-w-5xl mx-auto px-6 py-8 space-y-8">
 
-        {/* Plan Banner */}
         <div className="bg-gray-900 rounded-2xl p-6 flex justify-between items-center">
           <div>
             <p className="text-gray-400 text-sm">Current Plan</p>
             <p className="text-2xl font-bold capitalize">{plan?.current_plan} — ${plan?.price_monthly}/mo</p>
             <p className="text-gray-400 text-sm mt-1">Sync: {plan?.sync_frequency} · Max accounts: {plan?.max_accounts}</p>
           </div>
-          <button
-            onClick={() => window.location.href = 'http://127.0.0.1:8000/docs#/Billing/get_plans_billing_plans_get'}
-            className="bg-blue-600 hover:bg-blue-700 text-white px-5 py-2 rounded-lg font-semibold transition">
+          <button className="bg-blue-600 hover:bg-blue-700 text-white px-5 py-2 rounded-lg font-semibold transition">
             Upgrade Plan
           </button>
         </div>
 
-        {/* Bank Accounts */}
         <div className="bg-gray-900 rounded-2xl p-6">
           <div className="flex justify-between items-center mb-4">
             <h2 className="text-lg font-semibold">Bank Accounts</h2>
-            <span className="text-gray-400 text-sm">{accounts.length} / {plan?.max_accounts} connected</span>
+            <div className="flex items-center gap-3">
+              <span className="text-gray-400 text-sm">{accounts.length} / {plan?.max_accounts} connected</span>
+              <button onClick={handleConnectBank} disabled={linking}
+                className="bg-green-600 hover:bg-green-700 text-white text-sm px-4 py-2 rounded-lg font-semibold transition disabled:opacity-50">
+                {linking ? 'Connecting...' : '+ Connect Bank'}
+              </button>
+            </div>
           </div>
           {accounts.length === 0 ? (
-            <p className="text-gray-500 text-sm">No bank accounts connected yet. Use the API to link your first account.</p>
+            <p className="text-gray-500 text-sm">No bank accounts connected yet. Click "Connect Bank" to get started!</p>
           ) : (
             <div className="space-y-3">
               {accounts.map(account => (
@@ -143,7 +179,6 @@ const Dashboard: React.FC = () => {
           )}
         </div>
 
-        {/* Sync History */}
         <div className="bg-gray-900 rounded-2xl p-6">
           <h2 className="text-lg font-semibold mb-4">Sync History</h2>
           {logs.length === 0 ? (
